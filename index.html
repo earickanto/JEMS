@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Will you be my Valentine?</title>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    :root {
+      --yes: #ff3b7a;
+      --yesHover: #ff1f68;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      font-family: system-ui, sans-serif;
+      overflow: hidden;
+      padding: 16px;
+      background: #1a0a12;
+    }
+
+    /* ── ANIMATED GRADIENT BG ── */
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    /* ── FLOATING PARTICLES ── */
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* ── CONFETTI ── */
+    #confettiCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── 3D CARD ── */
+    .scene {
+      perspective: 1000px;
+      z-index: 10;
+      position: relative;
+    }
+
+    .card {
+      width: min(720px, 92vw);
+      padding: 32px 28px;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 28px;
+      text-align: center;
+      border: 1px solid rgba(255,100,150,0.3);
+      box-shadow:
+        0 0 40px rgba(255,59,122,0.15),
+        0 30px 80px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,255,255,0.15);
+      transform-style: preserve-3d;
+      transition: transform 0.08s ease-out, box-shadow 0.08s ease-out;
+      will-change: transform;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    /* ── 3D FLOATING HEART SVG ── */
+    .art-wrap {
+      position: relative;
+      width: min(260px, 80vw);
+      margin: 0 auto 10px;
+    }
+
+    .art {
+      width: 100%;
+      display: block;
+      filter: drop-shadow(0 0 20px rgba(255,59,122,0.6));
+      animation: float3d 3s ease-in-out infinite;
+      transform-style: preserve-3d;
+    }
+
+    @keyframes float3d {
+      0%   { transform: translateY(0px) rotateY(0deg) rotateX(0deg); }
+      25%  { transform: translateY(-12px) rotateY(8deg) rotateX(4deg); }
+      50%  { transform: translateY(-18px) rotateY(0deg) rotateX(-4deg); }
+      75%  { transform: translateY(-10px) rotateY(-8deg) rotateX(2deg); }
+      100% { transform: translateY(0px) rotateY(0deg) rotateX(0deg); }
+    }
+
+    .art-shadow {
+      width: 60%;
+      height: 12px;
+      background: radial-gradient(ellipse, rgba(255,59,122,0.4) 0%, transparent 70%);
+      margin: -4px auto 0;
+      animation: shadow-pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes shadow-pulse {
+      0%, 100% { transform: scaleX(1); opacity: 0.6; }
+      50% { transform: scaleX(0.6); opacity: 0.2; }
+    }
+
+    /* ── TITLE ── */
+    h1 {
+      font-size: clamp(22px, 3.5vw, 40px);
+      margin: 16px 0 22px;
+      color: #fff;
+      text-shadow: 0 0 30px rgba(255,100,150,0.8);
+      letter-spacing: -0.02em;
+    }
+
+    /* ── BUTTON ZONE ── */
+    .button-zone {
+      position: relative;
+      width: min(520px, 92%);
+      height: 150px;
+      margin: 0 auto;
+      touch-action: none;
+    }
+
+    button {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 16px 28px;
+      font-size: 18px;
+      font-weight: 800;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .15s ease, box-shadow .15s ease, background .12s ease;
+    }
+
+    #yesBtn {
+      left: 18%;
+      background: linear-gradient(135deg, #ff3b7a, #ff1f68);
+      color: #fff;
+      box-shadow:
+        0 0 0 0 rgba(255,59,122,0),
+        0 8px 24px rgba(255,59,122,0.5);
+      animation: yes-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes yes-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,122,0.3), 0 8px 24px rgba(255,59,122,0.5); }
+      50% { box-shadow: 0 0 0 10px rgba(255,59,122,0), 0 8px 32px rgba(255,59,122,0.7); }
+    }
+
+    #yesBtn:hover {
+      background: linear-gradient(135deg, #ff5a90, #ff3b7a);
+    }
+
+    #noBtn {
+      left: 62%;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+
+    .hint {
+      margin-top: 10px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* ── RESULT ── */
+    .result {
+      display: none;
+      margin-top: 18px;
+      animation: pop .35s ease;
+    }
+
+    .result h2 {
+      font-size: clamp(30px, 4.5vw, 46px);
+      margin: 10px 0;
+      color: #fff;
+      text-shadow: 0 0 30px rgba(255,150,180,0.9);
+    }
+
+    .fireworks {
+      width: min(340px, 86vw);
+      margin: 0 auto;
+      display: block;
+      border-radius: 16px;
+    }
+
+    @keyframes pop {
+      from { transform: scale(.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── RING RIPPLE ON YES ── */
+    .ripple-ring {
+      position: fixed;
+      border-radius: 50%;
+      border: 3px solid rgba(255,59,122,0.7);
+      transform: translate(-50%, -50%) scale(0);
+      animation: ripple-out 0.9s ease-out forwards;
+      pointer-events: none;
+      z-index: 500;
+    }
+
+    @keyframes ripple-out {
+      to { transform: translate(-50%, -50%) scale(8); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="bg-canvas"></canvas>
+  <canvas id="particle-canvas"></canvas>
+  <canvas id="confettiCanvas"></canvas>
+
+  <div class="scene" id="scene">
+    <main class="card" id="card">
+
+      <div class="art-wrap">
+        <svg class="art" viewBox="0 0 320 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="fur" cx="50%" cy="40%">
+              <stop offset="0%" stop-color="#ffd4b0"/>
+              <stop offset="100%" stop-color="#f2a97b"/>
+            </radialGradient>
+            <radialGradient id="heartGrad" cx="30%" cy="30%">
+              <stop offset="0%" stop-color="#ff85aa"/>
+              <stop offset="60%" stop-color="#ff3b7a"/>
+              <stop offset="100%" stop-color="#cc1a55"/>
+            </radialGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- heart glow bg -->
+          <ellipse cx="282" cy="68" rx="42" ry="38" fill="rgba(255,59,122,0.18)" filter="url(#glow)"/>
+
+          <!-- 3D heart shadow -->
+          <path d="M255 58 C255 42 274 33 286 46 C298 33 317 42 317 58
+                   C317 85 286 100 286 114 C286 100 255 85 255 58Z"
+                fill="rgba(150,10,50,0.35)" transform="translate(4,6)"/>
+
+          <!-- main heart -->
+          <path d="M250 55 C250 39 270 30 282 43 C294 30 314 39 314 55
+                   C314 82 282 96 282 110 C282 96 250 82 250 55Z"
+                fill="url(#heartGrad)" filter="url(#glow)"/>
+
+          <!-- heart shine -->
+          <path d="M262 44 C264 38 274 37 276 44" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+          <!-- body shadow -->
+          <ellipse cx="190" cy="215" rx="95" ry="14" fill="rgba(0,0,0,0.25)"/>
+
+          <!-- body -->
+          <path d="M90 118 C90 68 140 38 190 58 C240 38 290 68 290 118
+                   C290 178 240 208 190 208 C140 208 90 178 90 118Z"
+                fill="url(#fur)"/>
+
+          <!-- ear shadows -->
+          <path d="M112 90 L97 53 L142 76 Z" fill="rgba(200,130,80,0.5)"/>
+          <path d="M268 90 L283 53 L238 76 Z" fill="rgba(200,130,80,0.5)"/>
+
+          <!-- ears -->
+          <path d="M110 92 L95 55 L140 78 Z" fill="#f2a97b"/>
+          <path d="M270 92 L285 55 L240 78 Z" fill="#f2a97b"/>
+
+          <!-- inner ears -->
+          <path d="M112 88 L100 62 L135 80 Z" fill="#f9c4a4"/>
+          <path d="M268 88 L280 62 L245 80 Z" fill="#f9c4a4"/>
+
+          <!-- eyes -->
+          <circle cx="162" cy="128" r="9" fill="#1a0a0f"/>
+          <circle cx="218" cy="128" r="9" fill="#1a0a0f"/>
+          <circle cx="165" cy="125" r="3" fill="white"/>
+          <circle cx="221" cy="125" r="3" fill="white"/>
+
+          <!-- nose -->
+          <path d="M190 142 C186 142 182 146 182 150 C182 158 190 162 190 168
+                   C190 162 198 158 198 150 C198 146 194 142 190 142Z"
+                fill="#ff7aa2"/>
+
+          <!-- smile -->
+          <path d="M170 162 Q190 176 210 162" stroke="#c0617a" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+          <!-- blush -->
+          <ellipse cx="148" cy="148" rx="16" ry="10" fill="rgba(255,100,130,0.25)"/>
+          <ellipse cx="232" cy="148" rx="16" ry="10" fill="rgba(255,100,130,0.25)"/>
+        </svg>
+        <div class="art-shadow"></div>
+      </div>
+
+      <h1>nirali will you be my valentine?</h1>
+
+      <section class="button-zone" id="zone">
+        <button id="yesBtn">Yes 💖</button>
+        <button id="noBtn">No</button>
+      </section>
+
+      <div class="hint" id="hint">"No" seems a bit shy 😈</div>
+
+      <section class="result" id="result">
+        <h2>YAY! 🎉 I knew it!</h2>
+        <img class="fireworks"
+             src="C:\Users\antoe\Desktop\JEMS\Vizhi Veekura_1.mp4"
+             type="video/mp4"
+             alt="Fireworks"/>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    /* ════════════════════════════════
+       ANIMATED GRADIENT BACKGROUND
+    ════════════════════════════════ */
+    const bgCanvas = document.getElementById('bg-canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    let bgT = 0;
+
+    function resizeBg() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+    }
+    resizeBg();
+    window.addEventListener('resize', resizeBg);
+
+    const orbs = [
+      { x: 0.2, y: 0.3, r: 0.45, color: [180, 20, 80], phase: 0 },
+      { x: 0.8, y: 0.6, r: 0.40, color: [120, 10, 60], phase: 2 },
+      { x: 0.5, y: 0.1, r: 0.35, color: [200, 50, 100], phase: 4 },
+      { x: 0.1, y: 0.85, r: 0.30, color: [90, 5, 50], phase: 1 },
+    ];
+
+    function drawBg() {
+      const w = bgCanvas.width, h = bgCanvas.height;
+      bgCtx.fillStyle = '#1a0a12';
+      bgCtx.fillRect(0, 0, w, h);
+
+      orbs.forEach(o => {
+        const ox = (o.x + Math.sin(bgT * 0.3 + o.phase) * 0.12) * w;
+        const oy = (o.y + Math.cos(bgT * 0.25 + o.phase) * 0.1) * h;
+        const r = o.r * Math.min(w, h);
+
+        const g = bgCtx.createRadialGradient(ox, oy, 0, ox, oy, r);
+        const [cr, cg, cb] = o.color;
+        g.addColorStop(0, `rgba(${cr},${cg},${cb},0.35)`);
+        g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+
+        bgCtx.fillStyle = g;
+        bgCtx.fillRect(0, 0, w, h);
+      });
+
+      bgT += 0.012;
+      requestAnimationFrame(drawBg);
+    }
+    drawBg();
+
+    /* ════════════════════════════════
+       FLOATING HEART PARTICLES
+    ════════════════════════════════ */
+    const pCanvas = document.getElementById('particle-canvas');
+    const pCtx = pCanvas.getContext('2d');
+
+    function resizeP() { pCanvas.width = window.innerWidth; pCanvas.height = window.innerHeight; }
+    resizeP();
+    window.addEventListener('resize', resizeP);
+
+    const HEART_CHARS = ['♥','♡','❤','💕'];
+    const particles = Array.from({ length: 28 }, () => makeParticle());
+
+    function makeParticle(fromBottom = false) {
+      return {
+        x: Math.random() * window.innerWidth,
+        y: fromBottom ? window.innerHeight + 20 : Math.random() * window.innerHeight,
+        size: 10 + Math.random() * 20,
+        speed: 0.4 + Math.random() * 0.8,
+        drift: (Math.random() - 0.5) * 0.5,
+        alpha: 0.1 + Math.random() * 0.45,
+        char: HEART_CHARS[Math.floor(Math.random() * HEART_CHARS.length)],
+        spin: (Math.random() - 0.5) * 0.03,
+        angle: Math.random() * Math.PI * 2,
+        wobble: Math.random() * 100,
+      };
+    }
+
+    function drawParticles() {
+      pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+      particles.forEach((p, i) => {
+        p.y -= p.speed;
+        p.x += p.drift + Math.sin(p.wobble++ * 0.04) * 0.4;
+        p.angle += p.spin;
+
+        if (p.y < -30) particles[i] = makeParticle(true);
+
+        pCtx.save();
+        pCtx.globalAlpha = p.alpha;
+        pCtx.translate(p.x, p.y);
+        pCtx.rotate(p.angle);
+        pCtx.font = `${p.size}px system-ui`;
+        pCtx.fillStyle = `hsl(${340 + Math.sin(p.wobble * 0.05) * 20}, 80%, 65%)`;
+        pCtx.textAlign = 'center';
+        pCtx.textBaseline = 'middle';
+        pCtx.fillText(p.char, 0, 0);
+        pCtx.restore();
+      });
+      requestAnimationFrame(drawParticles);
+    }
+    drawParticles();
+
+    /* ════════════════════════════════
+       3D CARD TILT ON MOUSE / GYRO
+    ════════════════════════════════ */
+    const scene = document.getElementById('scene');
+    const card = document.getElementById('card');
+
+    scene.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dx = (e.clientX - cx) / (r.width / 2);
+      const dy = (e.clientY - cy) / (r.height / 2);
+      const rx = -dy * 10;
+      const ry = dx * 10;
+      card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+      card.style.boxShadow = `
+        ${-ry * 2}px ${rx * 2}px 60px rgba(255,59,122,0.2),
+        0 30px 80px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,255,255,0.15)`;
+    });
+
+    scene.addEventListener('mouseleave', () => {
+      card.style.transform = 'rotateX(0deg) rotateY(0deg)';
+      card.style.boxShadow = '';
+    });
+
+    /* gyroscope for mobile */
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener('deviceorientation', e => {
+        const rx = Math.max(-10, Math.min(10, (e.beta - 45) * 0.3));
+        const ry = Math.max(-10, Math.min(10, e.gamma * 0.3));
+        card.style.transform = `rotateX(${-rx}deg) rotateY(${ry}deg)`;
+      });
+    }
+
+    /* ════════════════════════════════
+       CONFETTI
+    ════════════════════════════════ */
+    const confettiCanvas = document.getElementById('confettiCanvas');
+
+    function resizeConfettiCanvas() {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      confettiCanvas.width = Math.floor(window.innerWidth * dpr);
+      confettiCanvas.height = Math.floor(window.innerHeight * dpr);
+      confettiCanvas.style.width = '100vw';
+      confettiCanvas.style.height = '100vh';
+    }
+    resizeConfettiCanvas();
+    window.addEventListener('resize', resizeConfettiCanvas);
+
+    const confettiInstance = confetti.create(confettiCanvas, { resize: false, useWorker: true });
+
+    function fullScreenConfetti() {
+      const end = Date.now() + 2200;
+      (function frame() {
+        confettiInstance({
+          particleCount: 14,
+          spread: 90,
+          startVelocity: 45,
+          ticks: 200,
+          colors: ['#ff3b7a','#ff85aa','#ffb3cc','#fff','#ffdd44'],
+          origin: { x: Math.random(), y: Math.random() * 0.25 }
+        });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      })();
+
+      setTimeout(() => confettiInstance({
+        particleCount: 350,
+        spread: 160,
+        startVelocity: 65,
+        ticks: 260,
+        colors: ['#ff3b7a','#ff85aa','#fff','#ffdd44','#cc44ff'],
+        origin: { x: 0.5, y: 0.55 }
+      }), 350);
+    }
+
+    /* ════════════════════════════════
+       RIPPLE RING EFFECT
+    ════════════════════════════════ */
+    function spawnRipple(x, y) {
+      const ring = document.createElement('div');
+      ring.className = 'ripple-ring';
+      ring.style.cssText = `left:${x}px;top:${y}px;width:60px;height:60px;`;
+      document.body.appendChild(ring);
+      setTimeout(() => ring.remove(), 900);
+    }
+
+    /* ════════════════════════════════
+       YES / NO LOGIC
+    ════════════════════════════════ */
+    const zone = document.getElementById('zone');
+    const yesBtn = document.getElementById('yesBtn');
+    const noBtn = document.getElementById('noBtn');
+    const result = document.getElementById('result');
+    const hint = document.getElementById('hint');
+
+    let yesScale = 1;
+
+    function growYes() {
+      yesScale = Math.min(2.3, yesScale + 0.12);
+      yesBtn.style.transform = `translateY(-50%) scale(${yesScale})`;
+    }
+
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+    function moveNo(px, py) {
+      const z = zone.getBoundingClientRect();
+      const b = noBtn.getBoundingClientRect();
+      let dx = (b.left + b.width / 2) - px;
+      let dy = (b.top + b.height / 2) - py;
+      const mag = Math.hypot(dx, dy) || 1;
+      dx /= mag; dy /= mag;
+      let newLeft = clamp((b.left - z.left) + dx * 160, 0, z.width - b.offsetWidth);
+      let newTop  = clamp((b.top - z.top) + dy * 160, 0, z.height - b.offsetHeight);
+      noBtn.style.left = newLeft + 'px';
+      noBtn.style.top  = newTop  + 'px';
+      noBtn.style.transform = 'none';
+      growYes();
+    }
+
+    function dodgeNo(e) {
+      const b = noBtn.getBoundingClientRect();
+      const d = Math.hypot((b.left + b.width / 2) - e.clientX, (b.top + b.height / 2) - e.clientY);
+      if (d < 140) moveNo(e.clientX, e.clientY);
+    }
+
+    zone.addEventListener('pointermove', dodgeNo);
+    zone.addEventListener('mousemove', dodgeNo);
+    noBtn.addEventListener('pointerenter', e => moveNo(e.clientX, e.clientY));
+    noBtn.addEventListener('mouseenter', e => moveNo(e.clientX, e.clientY));
+
+    noBtn.addEventListener('click', e => e.preventDefault());
+
+    yesBtn.addEventListener('click', e => {
+      spawnRipple(e.clientX, e.clientY);
+      spawnRipple(e.clientX, e.clientY);
+      setTimeout(() => spawnRipple(e.clientX, e.clientY), 150);
+
+      zone.style.display = 'none';
+      hint.style.display = 'none';
+      result.style.display = 'block';
+
+      /* card flips briefly on yes */
+      card.style.transition = 'transform 0.5s ease';
+      card.style.transform = 'rotateY(360deg)';
+      setTimeout(() => {
+        card.style.transition = '';
+        card.style.transform = 'rotateY(0deg)';
+      }, 500);
+
+      resizeConfettiCanvas();
+      fullScreenConfetti();
+    });
+  </script>
+</body>
+</html>
